@@ -1,16 +1,11 @@
 #pragma once
 #include <fstream>
-#include <vector>
 #include <unordered_set>
 #include <iostream>
-#include <stdint.h>
 #include <optional>
-#include "address.h"
+#include "types.h"
 
 using namespace std;
-
-using Page = int;
-using Data = vector<uint8_t>;
 
 class DiskManager{
     fstream file;
@@ -79,6 +74,10 @@ public:
         emptyPositions.erase(address);
 
         return address;
+    }
+
+    void addFreeSlot(Address address){
+        emptyPositions.insert(address);
     }
 
     Data readPage(Page page){

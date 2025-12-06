@@ -1,13 +1,8 @@
 #pragma once
-#define D   2
-#include "address.h"
-#include <vector>
-#include <stdint.h>
 #include <string>
+#include "types.h"
 
 using namespace std;
-using Page = int;
-using Key = long long;
 
 struct Node{
 
