@@ -1,17 +1,15 @@
 #pragma once
-#include <vector>
-#include <stdint.h>
+#include "types.h"
 #include <string>
 
 using namespace std;
-using Key = long long;
 
 struct Record{
     Key key;
     double angle;
     double radius;
 
-    static const size_t size = sizeof(Key) + 2 * sizeof(double);
+    static const size_t size = sizeof(Key) + sizeof(angle) + sizeof(radius);
 
     Record(Key k = 0, double a = 0, double r = 0){
         key = k;
@@ -19,8 +17,8 @@ struct Record{
         radius = r;
     }
 
-    vector<uint8_t> serialize(){
-        vector<uint8_t> data(size);
+    Data serialize(){
+        Data data(size);
         size_t curr = 0;
 
         memcpy(data.data() + curr, &key, sizeof(key));
@@ -34,7 +32,7 @@ struct Record{
         return data;
     }
     
-    static Record deserialize(vector<uint8_t> &data){
+    static Record deserialize(Data &data){
         Record record;
         size_t curr = 0;
 

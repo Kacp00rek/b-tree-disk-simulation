@@ -1,5 +1,8 @@
 #pragma once
-#define D   2
+#define D   1
+#define BLOCKING_FACTOR   100
+#define NULL_PAGE   -1
+#define NULL_KEY    -1
 #include <vector>
 #include <stdint.h>
 #include "address.h"

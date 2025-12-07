@@ -17,6 +17,9 @@ class DiskManager{
 public:
     static int READS;
     static int WRITES;
+    DiskManager(){
+        
+    }
     DiskManager(string &filename, size_t pageSize){
         file.open(filename, ios::out | ios::trunc);
         file.close();
@@ -62,7 +65,7 @@ public:
         emptyPages.insert(page);
     }
 
-    void markEmpty(Address address){
+    void markEmpty(Address &address){
         emptyPositions.insert(address);
     }
 
@@ -76,13 +79,13 @@ public:
         return address;
     }
 
-    void addFreeSlot(Address address){
+    void addFreeSlot(Address &address){
         emptyPositions.insert(address);
     }
 
     Data readPage(Page page){
         if(page < 0 || page >= pages){
-            throw std::out_of_range("DiskManager::writePage: Invalid page number");
+            throw std::out_of_range("DiskManager::readPage: Invalid page number");
         }
         if(emptyPages.find(page) != emptyPages.end()){
             throw std::runtime_error("DiskManager::readPage: Attempted to read en empty page");

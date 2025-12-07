@@ -16,23 +16,14 @@ struct Item{
 
 using CacheMap = unordered_map<Page, Item>;
 
-struct FileInfo{
-    DiskManager* diskManager;
-    LRUlist& queue;
-    CacheMap& cache;
-    int capacity;
-};
 
 class BufferManager{
-    vector<DiskManager*> diskManagers;
-    vector<LRUlist> queues;
-    vector<CacheMap> pageCaches;
-    unordered_map<string, int> files;
-    vector<int> capacities;
+    DiskManager* diskManager;
+    LRUlist queue;
+    CacheMap pageCache;
+    int capacity;
 
-    void removeLastElement(int index){
-        auto [diskManager, queue, pageCache, capacity] = getFileInfo(index);
-
+    void removeLastElement(){
         Page p = queue.back();
         Item& item = pageCache[p];
         if(item.dirty){
@@ -42,23 +33,11 @@ class BufferManager{
         pageCache.erase(p);
     }
 
-    Item& promoteAngGetItem(int index, Page page){
-        auto& pageCache = pageCaches[index];
-        auto& queue = queues[index];
-    
+    Item& promoteAngGetItem(Page page){
         Item& item = pageCache[page];
         queue.splice(queue.begin(), queue, item.it);
 
         return item;
-    }
-
-    FileInfo getFileInfo(int index){
-        return FileInfo{
-            diskManagers[index],
-            queues[index],
-            pageCaches[index],
-            capacities[index]
-        };
     }
 
 public:
@@ -66,26 +45,20 @@ public:
 
     }
 
-    void addFile(string filename, DiskManager *diskManager, int capacity){
-        files[filename] = (int)files.size();
-        diskManagers.push_back(diskManager);
-        queues.push_back(list<Page>());
-        pageCaches.push_back(CacheMap());
-        capacities.push_back(capacity);
+    BufferManager(DiskManager *diskManager, int capacity){
+        this->diskManager = diskManager;
+        this->capacity = capacity;
     }
 
-    void writePage(string filename, Page page, Data &data){
-        int index = files[filename];
-        auto [diskManager, queue, pageCache, capacity] = getFileInfo(index);
-
+    void writePage(Page page, Data &data){
         if(pageCache.find(page) != pageCache.end()){
-            Item& item = promoteAngGetItem(index, page);
+            Item& item = promoteAngGetItem(page);
             item.data = data;
             item.dirty = true;
         }
         else{
             if((int)queue.size() >= capacity){
-                removeLastElement(index);
+                removeLastElement();
             }
             Item newItem;
             newItem.data = data;
@@ -97,25 +70,20 @@ public:
         }
     }
     
-    Page writePage(string filename, Data &data){
-        int index = files[filename];
-        DiskManager* diskManager = diskManagers[index];
+    Page writePage(Data &data){
         Page page = diskManager->allocatePage();
-        writePage(filename, page, data);
+        writePage(page, data);
         return page;
     }
 
-    Data readPage(string filename, Page page){
-        int index = files[filename];
-        auto [diskManager, queue, pageCache, capacity] = getFileInfo(index);
-
+    Data readPage(Page page){
         if(pageCache.find(page) != pageCache.end()){
-            Item& item = promoteAngGetItem(index, page);
+            Item& item = promoteAngGetItem(page);
             return item.data;
         }
         else{
             if((int)queue.size() >= capacity){
-                removeLastElement(index);
+                removeLastElement();
             }
             Item newItem;
             newItem.data = diskManager->readPage(page);
@@ -128,10 +96,7 @@ public:
         }
     }
     
-    void removePage(string filename, Page page){
-        int index = files[filename];
-        auto [diskManager, queue, pageCache, capacity] = getFileInfo(index);
-
+    void removePage(Page page){
         if(pageCache.find(page) != pageCache.end()){
             queue.remove(page);
             pageCache.erase(page);
@@ -144,18 +109,15 @@ public:
         item.dirty = true;
     }
 
-    void writeRecord(string filename, Address address, Data &data){
-        int index = files[filename];
-        auto [diskManager, queue, pageCache, capacity] = getFileInfo(index);
-        auto [page, offset] = address;
-
+    void writeRecord(Address &address, Data &data){
+        auto [page, offset] = address; 
         if(pageCache.find(page) != pageCache.end()){
-            Item& item = promoteAngGetItem(index, page);
+            Item& item = promoteAngGetItem(page);
             modifyPage(item, offset, data);
         }
         else{
             if((int)queue.size() >= capacity){
-                removeLastElement(index);
+                removeLastElement();
             }
 
             Item newItem;
@@ -168,19 +130,16 @@ public:
         }
     }
 
-    Address writeRecord(string filename, Data &data){
-        int index = files[filename];
-        DiskManager* diskManager = diskManagers[index];
-
+    Address writeRecord(Data &data){
         optional<Address> address = diskManager->getEmptyPosition();
         if(address != nullopt){
-            writeRecord(filename, *address, data);
+            writeRecord(*address, data);
             return *address;
         }else{
             size_t pageSize = diskManager->getPageSize();
             Data tombstone(pageSize, 0);
             memcpy(tombstone.data(), data.data(), data.size());
-            Page page = writePage(filename, tombstone);
+            Page page = writePage(tombstone);
 
             for(int i = data.size(); i < pageSize; i += data.size()){
                 Address temp = {page, i};
@@ -191,17 +150,14 @@ public:
         }
     }
 
-    Data readRecord(string filename, Address address, size_t recordSize){
-        Data temp = readPage(filename, address.page);
+    Data readRecord(Address &address, size_t recordSize){
+        Data temp = readPage(address.page);
         Data data(recordSize);
         memcpy(data.data(), temp.data() + address.offset, data.size());
         return data;
     }
 
-    void removeRecord(string filename, Address address){
-        int index = files[filename];
-        DiskManager* diskManager = diskManagers[index];
-
+    void removeRecord(Address &address){
         diskManager->addFreeSlot(address);
     }
 
