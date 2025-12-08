@@ -3,8 +3,6 @@
 #include "record.h"
 #include "buffer_manager.h"
 
-enum STATUS { OK, ALREADY_EXISTS };
-
 struct SearchResult{
     STATUS status;
     Page page;
@@ -177,6 +175,22 @@ class BTree{
         }
     }
 
+    void generateDot(string &filename){
+        ofstream file(filename);
+
+        file << "digraph g {\n";
+        file << "node [shape = record,height=.1];\n";
+
+        if(root != NULL_PAGE){
+            int id = 0;
+            print(file, root, id);
+        }
+
+        file << "}";
+
+        file.close();
+    }
+
 public:
     public:
     BTree() : 
@@ -202,6 +216,22 @@ public:
         }
         Address address = *result;
         return T::deserialize(bufferRecords.readRecord(address, T::size));           
+    }
+
+    STATUS modify(T &record){
+        if(root == NULL_PAGE){
+            return DOESNT_EXIST;
+        }
+        auto result = search(record.key, root);
+        if(result == nullopt){
+            return DOESNT_EXIST;
+        }
+
+        Address address = *result;
+
+        bufferRecords.writeRecord(address, record.serialize());
+
+        return OK;
     }
 
     NodeEntry saveRecord(T &record){
@@ -241,22 +271,6 @@ public:
         }
         return OK;
     }   
-
-    void generateDot(string &filename){
-        ofstream file(filename);
-
-        file << "digraph g {\n";
-        file << "node [shape = record,height=.1];\n";
-
-        if(root != NULL_PAGE){
-            int id = 0;
-            print(file, root, id);
-        }
-
-        file << "}";
-
-        file.close();
-    }
 
     void visualize(){
         string filename = "btree.dot";

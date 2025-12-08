@@ -10,17 +10,35 @@ using RecordType = Record;
 unordered_map<Key, RecordType> hashmap;
 
 
-void insert(BTree<RecordType> &btree, int &id){
-    RecordType record = RecordType::random(id++);
-    STATUS status = btree.insert(record);
-    hashmap[record.key] = record;
+bool insert(BTree<RecordType> &btree, int &id){
+    int idToInsert;
+    STATUS expected;
+    if(id == 0 || rand() % 2 == 0){
+        idToInsert = id++;
+        expected = OK;
+    }
+    else{
+        idToInsert = rand() % id;
+        expected = ALREADY_EXISTS;
+    }
 
-    // cout << "INSERTED: " << record << "\n";
+    RecordType record = RecordType::random(idToInsert);
+    STATUS status = btree.insert(record);
+
+    if(expected == OK){
+        hashmap[record.key] = record;
+    }
+
+    bool verdict = status == expected;
+    cout << "INSERT: " << record << "\n";
+    cout << "EXPECTED: " << expected << "\n";
+    cout << "GOT       " << status << "\n";
+    cout << "VERDICT: " << (verdict ? "PASSED" : "FAILED") << "\n";
+
+    return verdict;
 }
 
 bool search(BTree<RecordType> &btree, int id){
-    int size = hashmap.size();
-
     bool verdict;
 
     random_device rd;
@@ -29,35 +47,62 @@ bool search(BTree<RecordType> &btree, int id){
 
     Key key = k(gen);
 
-    // cout << "SEARCH: " << key << "\n";
+    cout << "SEARCH: " << key << "\n";
 
     optional<RecordType> record = btree.search(key);
     
     if(hashmap.find(key) != hashmap.end()){
-        // cout << "EXPECTED: " << hashmap[key] << "\n";
-        // cout << "GOT:      ";
+        cout << "EXPECTED: " << hashmap[key] << "\n";
+        cout << "GOT:      ";
         if(record == nullopt){
-            // cout << "NULL" << "\n";
+            cout << "NULL" << "\n";
             verdict = false;
         }
         else{
-            // cout << *record << "\n";
+            cout << *record << "\n";
             verdict = record == hashmap[key];
         }
     }
     else{
-        // cout << "EXPECTED: NULL\n";
-        // cout << "GOT:      ";
+        cout << "EXPECTED: NULL\n";
+        cout << "GOT:      ";
         if(record == nullopt){
-            // cout << "NULL" << "\n";
+            cout << "NULL" << "\n";
             verdict = true;
         }
         else{
-            // cout << *record << "\n";
+            cout << *record << "\n";
             verdict = false;
         }
     }
-    // cout << "VERDICT: " << (verdict ? "PASSED" : "FAILED") << "\n";
+    cout << "VERDICT: " << (verdict ? "PASSED" : "FAILED") << "\n";
+
+    return verdict;
+}
+
+bool modify(BTree<RecordType> &btree, int id){
+    random_device rd;
+    mt19937 gen(rd());
+    uniform_int_distribution<int> k(0, (id - 1) * 2);
+    Key key = k(gen);
+    RecordType record = RecordType::random(key);
+
+    cout << "MODIFY: " << key << " -> " << record << "\n";
+    STATUS status = btree.modify(record);
+    STATUS expected;
+
+    if(hashmap.find(key) != hashmap.end()){
+        expected = OK;
+        hashmap[record.key] = record;
+    }
+    else{
+        expected = DOESNT_EXIST;
+    }
+
+    bool verdict = status == expected;
+    cout << "EXPECTED: " << expected << "\n";
+    cout << "GOT       " << status << "\n";
+    cout << "VERDICT: " << (verdict ? "PASSED" : "FAILED") << "\n";
 
     return verdict;
 }
@@ -66,24 +111,37 @@ int main(){
 
     srand(time(NULL));
 
-    int n = 1000000, id = 0;
-    int tests = 0, testsPassed = 0;
+    int n = 100000, id = 0;
+    int tests = 1, testsPassed = 0;
     BTree<RecordType> btree;
 
-    insert(btree, id);
+    if(insert(btree, id)){
+        testsPassed++;
+    }
 
 
     for(int i = 0; i < n - 1; i++){
-        // cout << "\n";
-        int option = rand() % 2;
+        cout << "\n";
+        int option = rand() % 3;
 
         if(option == 0){
-            insert(btree, id);
+            bool ok = insert(btree, id);
+            tests++;
+            if(ok){
+                testsPassed++;
+            }
             // btree.visualize();
             // Sleep(1000);
         }
-        else{
+        else if(option == 1){
             bool ok = search(btree, id);
+            tests++;
+            if(ok){
+                testsPassed++;
+            }
+        }
+        else{
+            bool ok = modify(btree, id);
             tests++;
             if(ok){
                 testsPassed++;

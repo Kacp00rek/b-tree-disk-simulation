@@ -62,7 +62,7 @@ struct Record{
     }
 
     friend ostream& operator<<(ostream &os, const Record &r){
-        os << "[ " << r.angle << ", " << r.radius << " ]";
+        os << "[ " << r.key << ", " << r.angle << ", " << r.radius << " ]";
         return os;
     }
 

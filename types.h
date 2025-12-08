@@ -11,3 +11,12 @@ using Page = int;
 using Byte = uint8_t;
 using Data = vector<Byte>;
 using Key = long long;
+enum STATUS { OK, ALREADY_EXISTS, DOESNT_EXIST };
+ostream& operator<<(ostream& os, STATUS c) {
+    switch(c){
+        case OK:   os << "OK";   break;
+        case ALREADY_EXISTS: os << "ALREADY_EXISTS"; break;
+        case DOESNT_EXIST:  os << "DOESNT_EXIST";  break;
+    }
+    return os;
+}
