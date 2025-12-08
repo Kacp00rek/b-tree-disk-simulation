@@ -22,7 +22,7 @@ struct NodeEntry{
         offset += sizeof(address.offset);
     }
 
-    static NodeEntry deserialize(const Data& data, size_t& offset) {
+    static NodeEntry deserialize(const Data &data, size_t &offset) {
         NodeEntry entry;
         
         memcpy(&entry.key, data.data() + offset, sizeof(entry.key));
@@ -51,7 +51,7 @@ struct Node{
 
     static const size_t size = sizeof(leaf) + sizeof(parent) + sizeof(int) + 2 * D * NodeEntry::size + (2 * D + 1) * sizeof(Page);
 
-    int searchPlace(NodeEntry entry){
+    int searchPlace(const NodeEntry &entry){
         return upper_bound(entries.begin(), entries.end(), entry) - entries.begin();
     }
 
@@ -62,7 +62,7 @@ struct Node{
         }
     }
 
-    void push_front(NodeEntry &entry){
+    void push_front(const NodeEntry &entry){
         entries.insert(entries.begin(), entry);
     }
 
@@ -77,13 +77,13 @@ struct Node{
         }
     }
 
-    int addKey(NodeEntry &entry){
+    int addKey(const NodeEntry &entry){
         int index = searchPlace(entry);
         entries.insert(entries.begin() + index, entry);
         return index;
     }
 
-    void addKey(NodeEntry &entry, Page child){
+    void addKey(const NodeEntry &entry, Page child){
         int index = addKey(entry);
         children.insert(children.begin() + index + 1, child);
     }
@@ -117,7 +117,7 @@ struct Node{
         return data;
     }
 
-    static Node deserialize(Data data){
+    static Node deserialize(const Data &data){
         Node node;
         size_t offset = 0;
 
@@ -151,5 +151,4 @@ struct Node{
         return node;
     }
 
-    
 };

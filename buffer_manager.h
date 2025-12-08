@@ -50,7 +50,7 @@ public:
         this->capacity = capacity;
     }
 
-    void writePage(Page page, Data &data){
+    void writePage(Page page, const Data &data){
         if(pageCache.find(page) != pageCache.end()){
             Item& item = promoteAngGetItem(page);
             item.data = data;
@@ -70,7 +70,7 @@ public:
         }
     }
     
-    Page writePage(Data &data){
+    Page writePage(const Data &data){
         Page page = diskManager->allocatePage();
         writePage(page, data);
         return page;
@@ -104,12 +104,12 @@ public:
         diskManager->removePage(page);
     }
 
-    void modifyPage(Item &item, int offset, Data &data){
+    void modifyPage(Item &item, int offset, const Data &data){
         memcpy(item.data.data() + offset, data.data(), data.size());
         item.dirty = true;
     }
 
-    void writeRecord(Address &address, Data &data){
+    void writeRecord(Address &address, const Data &data){
         auto [page, offset] = address; 
         if(pageCache.find(page) != pageCache.end()){
             Item& item = promoteAngGetItem(page);
@@ -130,7 +130,7 @@ public:
         }
     }
 
-    Address writeRecord(Data &data){
+    Address writeRecord(const Data &data){
         optional<Address> address = diskManager->getEmptyPosition();
         if(address != nullopt){
             writeRecord(*address, data);
@@ -150,14 +150,14 @@ public:
         }
     }
 
-    Data readRecord(Address &address, size_t recordSize){
+    Data readRecord(const Address &address, size_t recordSize){
         Data temp = readPage(address.page);
         Data data(recordSize);
         memcpy(data.data(), temp.data() + address.offset, data.size());
         return data;
     }
 
-    void removeRecord(Address &address){
+    void removeRecord(const Address &address){
         diskManager->addFreeSlot(address);
     }
 

@@ -24,8 +24,7 @@ class BTree{
     void updateChildParent(Page childPageID, Page newParentID) {
         Node childNode = Node::deserialize(bufferNodes.readPage(childPageID));
         childNode.parent = newParentID;
-        Data data = childNode.serialize();
-        bufferNodes.writePage(childPageID, data);
+        bufferNodes.writePage(childPageID, childNode.serialize());
     }
 
     optional<Address> search(Key key, Page page){
@@ -53,27 +52,44 @@ class BTree{
         return searchPlace(key, node.children[index]);
     }
 
-    void leftRotate(Node &parent, Node &leftChild, Node &node, int parentIndex){
+    void leftRotate(Node &parent, Node &leftChild, Node &node, int parentIndex, Page leftPage){
         leftChild.entries.push_back(parent.entries[parentIndex]);
         if(!node.leaf){
             leftChild.children.push_back(node.children[0]);
+            updateChildParent(node.children[0], leftPage);
         }
-        
         parent.entries[parentIndex] = node.entries[0];
-
         node.pop_front();
     }
 
-    void rightRotate(Node &parent, Node &rightChild, Node &node, int parentIndex){
+    void rightRotate(Node &parent, Node &rightChild, Node &node, int parentIndex, Page rightPage){
         rightChild.push_front(parent.entries[parentIndex]);
         if(!node.leaf){
             rightChild.push_front(node.children[node.children.size() - 1]);
-        }
-        
+            updateChildParent(node.children[node.children.size() - 1], rightPage);
+        } 
         parent.entries[parentIndex] = node.entries[node.entries.size() - 1];
-
         node.pop_back();
     }
+
+    void performCompensation(
+        Node &node, Page page,
+        Node &sibling, Page siblingPage, int siblingIndex,
+        Node &parent, int parentIndex, bool isLeft
+    ){
+        int rotations = (2 * D + 1 - sibling.entries.size()) / 2;
+        for(int i = 0; i < rotations; i++){
+            if(isLeft){
+                leftRotate(parent, sibling, node, parentIndex, siblingPage);
+            }
+            else{
+                rightRotate(parent, sibling, node, parentIndex, siblingPage);
+            }
+        }
+        bufferNodes.writePage(siblingPage, sibling.serialize());
+        bufferNodes.writePage(node.parent, parent.serialize());
+        bufferNodes.writePage(page, node.serialize());
+        }
 
     bool compensation(Node &node, Page page){
         if(node.parent == NULL_PAGE){
@@ -84,41 +100,19 @@ class BTree{
 
         if(childIndex > 0){
             int leftIndex = childIndex - 1;
-            Node leftChild = Node::deserialize(bufferNodes.readPage(parent.children[leftIndex]));
-            if(leftChild.entries.size() < 2 * D){
-                int rotations = (2 * D + 1 - leftChild.entries.size()) / 2;
-                for(int i = 0; i < rotations; i++){
-                    if(!node.leaf){
-                        updateChildParent(node.children[0], parent.children[leftIndex]);
-                    }
-                    leftRotate(parent, leftChild, node, leftIndex);
-                }
-                Data data = leftChild.serialize();
-                bufferNodes.writePage(parent.children[leftIndex], data);
-                data = parent.serialize();
-                bufferNodes.writePage(node.parent, data);
-                data = node.serialize();
-                bufferNodes.writePage(page, data);
+            Page leftSiblingPage = parent.children[leftIndex];
+            Node leftSibling = Node::deserialize(bufferNodes.readPage(leftSiblingPage));
+            if(leftSibling.entries.size() < 2 * D){
+                performCompensation(node, page, leftSibling, leftSiblingPage, leftIndex, parent, leftIndex, true);
                 return true;
             }
         }
         if(childIndex < parent.children.size() - 1){
             int rightIndex = childIndex + 1;
-            Node rightChild = Node::deserialize(bufferNodes.readPage(parent.children[rightIndex]));
-            if(rightChild.entries.size() < 2 * D){
-                int rotations = (2 * D + 1 - rightChild.entries.size()) / 2;
-                for(int i = 0; i < rotations; i++){
-                    if(!node.leaf){
-                        updateChildParent(node.children[node.children.size() - 1], parent.children[rightIndex]);
-                    }
-                    rightRotate(parent, rightChild, node, childIndex);
-                }
-                Data data = rightChild.serialize();
-                bufferNodes.writePage(parent.children[rightIndex], data);
-                data = parent.serialize();
-                bufferNodes.writePage(node.parent, data);
-                data = node.serialize();
-                bufferNodes.writePage(page, data);
+            Page rightSibingPage = parent.children[rightIndex];
+            Node rightSibling = Node::deserialize(bufferNodes.readPage(rightSibingPage));
+            if(rightSibling.entries.size() < 2 * D){
+                performCompensation(node, page, rightSibling, rightSibingPage, rightIndex, parent, childIndex, false);
                 return true;
             }
         }
@@ -129,18 +123,20 @@ class BTree{
         Node sibling;
         sibling.leaf = node.leaf;
 
-        for(int i = D + 1; i < 2 * D + 1; i++){
+        int median = D;
+        int maxEntries = 2 * D + 1;
+
+        for(int i = median + 1; i < maxEntries; i++){
             sibling.entries.push_back(node.entries[i]);
         }
         if(!node.leaf){
-            for(int i = D + 1; i < 2 * D + 2; i++){
+            for(int i = median + 1; i < maxEntries + 1; i++){
                 sibling.children.push_back(node.children[i]);
             }
         }
         Node parent;
         if(node.parent == NULL_PAGE){
-            Data data = parent.serialize();
-            root = bufferNodes.writePage(data);
+            root = bufferNodes.writePage(parent.serialize());
             node.parent = root;
             parent.children.push_back(page);
         }
@@ -148,21 +144,37 @@ class BTree{
             parent = Node::deserialize(bufferNodes.readPage(node.parent));
         }
         sibling.parent = node.parent;
-        Data data = sibling.serialize();
-        Page newPage = bufferNodes.writePage(data);
+        Page newPage = bufferNodes.writePage(sibling.serialize());
         for(int i = 0; i < sibling.children.size(); i++){
             updateChildParent(sibling.children[i], newPage);
         }
 
-        parent.addKey(node.entries[D], newPage);
+        parent.addKey(node.entries[median], newPage);
 
-        for(int i = 0; i < D + 1; i++){
+        for(int i = 0; i < median + 1; i++){
             node.pop_back();
         }
-        data = node.serialize();
-        bufferNodes.writePage(page, data);
+        bufferNodes.writePage(page, node.serialize());
 
         return parent;
+    }
+
+    void print(ofstream &file, Page page, int &id){
+        Node node = Node::deserialize(bufferNodes.readPage(page));
+        
+        file << "node" << id << "[label =\"<f0> ";
+        for(int i = 0; i < node.entries.size(); i++){
+            file << "|" << node.entries[i].key << "| <f" << i + 1 <<"> ";
+        }
+        file << "\"];\n";
+
+        if(!node.leaf){
+        int currentId = id;
+            for(int i = 0; i < node.children.size(); i++){
+                file << "\"node" << currentId << "\":f" << i <<" -> \"node" << ++id << "\"\n";
+                print(file, node.children[i], id);
+            }
+        }
     }
 
 public:
@@ -174,8 +186,8 @@ public:
         diskNodes(filenameNodes, Node::size),
         diskMain(filenameMain, T::size * BLOCKING_FACTOR),
         
-        bufferNodes(&diskNodes, 5),
-        bufferRecords(&diskMain, 5)
+        bufferNodes(&diskNodes, 16),
+        bufferRecords(&diskMain, 16)
     {
         root = NULL_PAGE;
     }
@@ -188,23 +200,22 @@ public:
         if(result == nullopt){
             return nullopt;
         }
-        return T::deserialize(bufferRecords.readRecord(*result));           
+        Address address = *result;
+        return T::deserialize(bufferRecords.readRecord(address, T::size));           
     }
 
     NodeEntry saveRecord(T &record){
-        Data data = record.serialize();
-        Address address = bufferRecords.writeRecord(data);
+        Address address = bufferRecords.writeRecord(record.serialize());
         return {record.key, address};
     }
 
-    STATUS insert(T record){
+    STATUS insert(T &record){
         if(root == NULL_PAGE){
             NodeEntry entry = saveRecord(record);
             Node node = Node();
             node.leaf = true;
             node.entries.push_back(entry);
-            Data data = node.serialize();
-            root = bufferNodes.writePage(data);
+            root = bufferNodes.writePage(node.serialize());
             return OK;
         }
         auto [status, currentPage] = searchPlace(record.key, root);
@@ -215,50 +226,50 @@ public:
         NodeEntry entry = saveRecord(record);
         Node node = Node::deserialize(bufferNodes.readPage(currentPage));
         node.addKey(entry);
-        if(node.entries.size() <= 2 * D){
-            Data data = node.serialize();
-            bufferNodes.writePage(currentPage, data);
-            return OK;
-        }
 
-        while(node.entries.size() > 2 * D){
+        while(true){
+            if(node.entries.size() <= 2 * D){
+                bufferNodes.writePage(currentPage, node.serialize());
+                break;
+            }
             if(compensation(node, currentPage)){
                 break;
             }
             Node parent = split(node, currentPage);
-            if(parent.entries.size() <= 2 * D){
-                Data data = parent.serialize();
-                bufferNodes.writePage(node.parent, data);
-            }
             currentPage = node.parent;
             node = parent;
         }
         return OK;
     }   
 
-    void print(){
+    void generateDot(string &filename){
+        ofstream file(filename);
+
+        file << "digraph g {\n";
+        file << "node [shape = record,height=.1];\n";
+
         if(root != NULL_PAGE){
-            print(root, 0);
+            int id = 0;
+            print(file, root, id);
         }
+
+        file << "}";
+
+        file.close();
     }
 
-    void print(Page page, int depth){
-        Node node = Node::deserialize(bufferNodes.readPage(page));
+    void visualize(){
+        string filename = "btree.dot";
+        generateDot(filename);
 
-        for(int i = 0; i < node.entries.size(); i++){
-            if(!node.leaf){
-                print(node.children[i], depth + 1);
-            }
-            // cout << "KEY: " << node.entries[i].key << "\n";
-            // cout << "PAGE: " << page << "\n";
-            // cout << "PARENT PAGE " << node.parent << "\n";
-            // cout << "DEPTH: " << depth << "\n\n";
-            cout << node.entries[i].key << " ";
+        string png = filename;
+        size_t dotPos = png.rfind(".dot");
+
+        if(dotPos != string::npos){
+            png.replace(dotPos, 4, ".png");
         }
-        if(!node.leaf){
-            print(node.children[node.entries.size()], depth + 1);
-        }
+
+        string command = "dot -Tpng " + filename + " -o " + png;
+        system(command.c_str());
     }
-
-
 };

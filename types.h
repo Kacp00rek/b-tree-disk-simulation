@@ -1,6 +1,6 @@
 #pragma once
-#define D   1
-#define BLOCKING_FACTOR   100
+#define D   2
+#define BLOCKING_FACTOR   256
 #define NULL_PAGE   -1
 #define NULL_KEY    -1
 #include <vector>
@@ -8,5 +8,6 @@
 #include "address.h"
 using namespace std;
 using Page = int;
-using Data = vector<uint8_t>;
+using Byte = uint8_t;
+using Data = vector<Byte>;
 using Key = long long;

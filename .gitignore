@@ -5,3 +5,5 @@ test2.cpp
 *.txt
 seq.cpp
 test3.cpp
+*.dot
+*.png

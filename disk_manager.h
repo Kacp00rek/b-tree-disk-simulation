@@ -33,7 +33,7 @@ public:
         pages = 0;
     }
 
-    void writePage(Page page, Data &data){
+    void writePage(Page page, const Data &data){
         if(page < 0 || page >= pages){
             throw std::out_of_range("DiskManager::writePage: Invalid page number");
         }
@@ -42,7 +42,7 @@ public:
         }
         WRITES++;
         file.seekp(page * pageSize);
-        file.write(reinterpret_cast<char*>(data.data()), pageSize);
+        file.write(reinterpret_cast<const char*>(data.data()), pageSize);
     }
 
     Page allocatePage(){
@@ -65,7 +65,7 @@ public:
         emptyPages.insert(page);
     }
 
-    void markEmpty(Address &address){
+    void markEmpty(const Address &address){
         emptyPositions.insert(address);
     }
 
@@ -79,7 +79,7 @@ public:
         return address;
     }
 
-    void addFreeSlot(Address &address){
+    void addFreeSlot(const Address &address){
         emptyPositions.insert(address);
     }
 

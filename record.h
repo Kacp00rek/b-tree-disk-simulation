@@ -1,6 +1,7 @@
 #pragma once
 #include "types.h"
 #include <string>
+#include <random>
 
 using namespace std;
 
@@ -32,7 +33,7 @@ struct Record{
         return data;
     }
     
-    static Record deserialize(Data &data){
+    static Record deserialize(const Data &data){
         Record record;
         size_t curr = 0;
 
@@ -45,5 +46,27 @@ struct Record{
         memcpy(&record.radius, data.data() + curr, sizeof(radius));
 
         return record;
+    }
+
+    static Record random(Key key){
+        Record record;
+        record.key = key;
+        random_device rd;
+        mt19937 gen(rd());
+        uniform_real_distribution<double> ang(0, 360);
+        uniform_real_distribution<double> rad(0, 100);
+        record.angle = ang(gen);
+        record.radius = rad(gen);
+        
+        return move(record);
+    }
+
+    friend ostream& operator<<(ostream &os, const Record &r){
+        os << "[ " << r.angle << ", " << r.radius << " ]";
+        return os;
+    }
+
+    bool operator==(const Record &other) const {
+        return key == other.key && angle == other.angle && radius == other.radius;
     }
 };
