@@ -42,10 +42,10 @@ class BTree{
         int index = node.searchPlace({key, {0, 0}});
 
         if(index > 0 && node.entries[index - 1].key == key){
-            return {ALREADY_EXISTS, NULL_PAGE};
+            return {ALREADY_EXISTS, page};
         }
         if(node.leaf){
-            return {OK, page};
+            return {DOESNT_EXIST, page};
         }
         return searchPlace(key, node.children[index]);
     }
@@ -75,7 +75,9 @@ class BTree{
         Node &sibling, Page siblingPage, int siblingIndex,
         Node &parent, int parentIndex, bool isLeft
     ){
-        int rotations = (2 * D + 1 - sibling.entries.size()) / 2;
+        int rotations = abs((int)(node.entries.size() - sibling.entries.size())) / 2;
+        // cout << rotations << "\n";
+        // cout << "DIRECTION LEFT: " << isLeft << "\n";
         for(int i = 0; i < rotations; i++){
             if(isLeft){
                 leftRotate(parent, sibling, node, parentIndex, siblingPage);
@@ -89,7 +91,7 @@ class BTree{
         bufferNodes.writePage(page, node.serialize());
         }
 
-    bool compensation(Node &node, Page page){
+    bool compensationInsert(Node &node, Page page){
         if(node.parent == NULL_PAGE){
             return false;
         }
@@ -111,6 +113,38 @@ class BTree{
             Node rightSibling = Node::deserialize(bufferNodes.readPage(rightSibingPage));
             if(rightSibling.entries.size() < 2 * D){
                 performCompensation(node, page, rightSibling, rightSibingPage, rightIndex, parent, childIndex, false);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    bool compensationRemove(Node &node, Page page){
+        if(node.parent == NULL_PAGE){
+            return false;
+        }
+        Node parent = Node::deserialize(bufferNodes.readPage(node.parent));
+        int childIndex = parent.searchChild(page);
+       //  cout << "CHECKPOINT1";
+        if(childIndex > 0){
+            int leftIndex = childIndex - 1;
+            Page leftSiblingPage = parent.children[leftIndex];
+            Node leftSibling = Node::deserialize(bufferNodes.readPage(leftSiblingPage));
+            // cout << "CHECKPOINT2";
+            if(leftSibling.entries.size() > D){
+                // cout << "COMPENSATION LEFT\n";
+                performCompensation(leftSibling, leftSiblingPage, node, page, childIndex, parent, leftIndex, false);
+                return true;
+            }
+        }
+        if(childIndex < parent.children.size() - 1){
+            int rightIndex = childIndex + 1;
+            Page rightSibingPage = parent.children[rightIndex];
+            Node rightSibling = Node::deserialize(bufferNodes.readPage(rightSibingPage));
+            // cout << "CHECKPOINT3";
+            if(rightSibling.entries.size() > D){
+                // cout << "COMPENSATION RIGHT\n";
+                performCompensation(rightSibling, rightSibingPage, node, page, childIndex, parent, childIndex, true);
                 return true;
             }
         }
@@ -141,10 +175,14 @@ class BTree{
         else{
             parent = Node::deserialize(bufferNodes.readPage(node.parent));
         }
+
         sibling.parent = node.parent;
         Page newPage = bufferNodes.writePage(sibling.serialize());
-        for(int i = 0; i < sibling.children.size(); i++){
-            updateChildParent(sibling.children[i], newPage);
+
+        if(!node.leaf){
+            for(int i = 0; i < sibling.children.size(); i++){
+                updateChildParent(sibling.children[i], newPage);
+            }
         }
 
         parent.addKey(node.entries[median], newPage);
@@ -157,6 +195,46 @@ class BTree{
         return parent;
     }
 
+    Node merge(Node &node, Page page){
+        // cout << "MERGE\n";
+        Node parent = Node::deserialize(bufferNodes.readPage(node.parent));
+        int index = parent.searchChild(page);
+        int parentEntry;
+        Page siblingPage;
+        Node sibling;
+        if(index > 0){
+            siblingPage = parent.children[index - 1];
+            sibling = Node::deserialize(bufferNodes.readPage(siblingPage));
+            parentEntry = index - 1;
+        }
+        else{
+            siblingPage = parent.children[index + 1];
+            sibling = Node::deserialize(bufferNodes.readPage(siblingPage));
+            swap(node, sibling);
+            swap(page, siblingPage);
+            parentEntry = index;
+        }
+        
+        sibling.entries.push_back(parent.entries[parentEntry]);
+
+        for(int i = 0; i < (int)node.entries.size(); i++){
+            sibling.entries.push_back(node.entries[i]);
+        }
+
+        if(!node.leaf){
+            for(int i = 0; i < (int)node.children.size(); i++){
+                sibling.children.push_back(node.children[i]);
+                updateChildParent(node.children[i], siblingPage);
+            }
+        }
+        parent.removeKey(parent.entries[parentEntry].key);
+
+        bufferNodes.removePage(page);
+        bufferNodes.writePage(siblingPage, sibling.serialize());
+
+        return move(parent);
+    }
+
     void print(ofstream &file, Page page, int &id){
         Node node = Node::deserialize(bufferNodes.readPage(page));
         
@@ -167,7 +245,7 @@ class BTree{
         file << "\"];\n";
 
         if(!node.leaf){
-        int currentId = id;
+            int currentId = id;
             for(int i = 0; i < node.children.size(); i++){
                 file << "\"node" << currentId << "\":f" << i <<" -> \"node" << ++id << "\"\n";
                 print(file, node.children[i], id);
@@ -189,6 +267,14 @@ class BTree{
         file << "}";
 
         file.close();
+    }
+
+    Page findSuccessor(Page page){
+        Node node = Node::deserialize(bufferNodes.readPage(page));
+        if(node.leaf){
+            return page;
+        }
+        return findSuccessor(node.children[0]);
     }
 
 public:
@@ -214,8 +300,7 @@ public:
         if(result == nullopt){
             return nullopt;
         }
-        Address address = *result;
-        return T::deserialize(bufferRecords.readRecord(address, T::size));           
+        return T::deserialize(bufferRecords.readRecord(*result, T::size));           
     }
 
     STATUS modify(T &record){
@@ -227,9 +312,7 @@ public:
             return DOESNT_EXIST;
         }
 
-        Address address = *result;
-
-        bufferRecords.writeRecord(address, record.serialize());
+        bufferRecords.writeRecord(*result, record.serialize());
 
         return OK;
     }
@@ -248,11 +331,13 @@ public:
             root = bufferNodes.writePage(node.serialize());
             return OK;
         }
+
         auto [status, currentPage] = searchPlace(record.key, root);
 
         if(status == ALREADY_EXISTS){
             return status;
         }
+
         NodeEntry entry = saveRecord(record);
         Node node = Node::deserialize(bufferNodes.readPage(currentPage));
         node.addKey(entry);
@@ -262,7 +347,7 @@ public:
                 bufferNodes.writePage(currentPage, node.serialize());
                 break;
             }
-            if(compensation(node, currentPage)){
+            if(compensationInsert(node, currentPage)){
                 break;
             }
             Node parent = split(node, currentPage);
@@ -271,6 +356,73 @@ public:
         }
         return OK;
     }   
+
+    STATUS remove(Key key){
+        if(root == NULL_PAGE){
+            return DOESNT_EXIST;
+        }
+        auto [status, currentPage] = searchPlace(key, root);
+
+        if(status == DOESNT_EXIST){
+            return status;
+        }
+
+        // cout << currentPage << "\n";
+
+        Node node = Node::deserialize(bufferNodes.readPage(currentPage));
+        int index = node.searchPlace({key, {0, 0}});
+
+        bufferRecords.removeRecord(node.entries[index - 1].address);
+        if(node.leaf){
+            node.removeKey(key);
+        }
+        else{
+            Page successorPage = findSuccessor(node.children[index]);
+            Node successor = Node::deserialize(bufferNodes.readPage(successorPage));
+            node.entries[index - 1] = successor.entries[0];
+            successor.pop_front();
+
+            bufferNodes.writePage(currentPage, node.serialize());
+            currentPage = successorPage;
+            node = move(successor);
+        }
+
+
+        while(true){
+            if((int)node.entries.size() >= D){
+                bufferNodes.writePage(currentPage, node.serialize());
+                break;
+            }
+            if(currentPage == root){
+                if((int)node.entries.size() < 1){
+                    bufferNodes.removePage(currentPage);
+                    if(!node.leaf){
+                        root = node.children[0];
+                        node = Node::deserialize(bufferNodes.readPage(root));
+                        node.parent = NULL_PAGE;
+                        currentPage = root;
+                    }
+                    else{
+                        root = NULL_PAGE;
+                        break;
+                    }
+                }
+                bufferNodes.writePage(currentPage, node.serialize());
+                break;
+            }
+            if(compensationRemove(node, currentPage)){
+                break;
+            }
+            Node parent = merge(node, currentPage);
+            if((int)parent.entries.size() >= D){
+                bufferNodes.writePage(node.parent, parent.serialize());
+                break;
+            }
+            currentPage = node.parent;
+            node = move(parent);
+        }
+        return OK;
+    }
 
     void visualize(){
         string filename = "btree.dot";

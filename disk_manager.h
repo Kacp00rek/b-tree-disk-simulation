@@ -59,7 +59,7 @@ public:
 
     void removePage(Page page){
         if(page < 0 || page >= pages){
-            throw std::out_of_range("DiskManager::writePage: Invalid page number");
+            throw std::out_of_range("DiskManager::removePage: Invalid page number");
             return;
         }
         emptyPages.insert(page);

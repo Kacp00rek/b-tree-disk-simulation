@@ -55,6 +55,15 @@ struct Node{
         return upper_bound(entries.begin(), entries.end(), entry) - entries.begin();
     }
 
+    int searchChild(Page page){
+        for(int i = 0; i < (int)children.size(); i++){
+            if(children[i] == page){
+                return i;
+            }
+        }
+        return NULL_PAGE;
+    }
+
     void pop_front(){
         entries.erase(entries.begin());
         if(!leaf){
@@ -86,6 +95,14 @@ struct Node{
     void addKey(const NodeEntry &entry, Page child){
         int index = addKey(entry);
         children.insert(children.begin() + index + 1, child);
+    }
+
+    void removeKey(Key key){
+        int index = searchPlace({key, {0, 0}}) - 1;
+        entries.erase(entries.begin() + index);
+        if(!leaf){
+            children.erase(children.begin() + index + 1);
+        }
     }
 
     Data serialize(){

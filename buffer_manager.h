@@ -109,7 +109,7 @@ public:
         item.dirty = true;
     }
 
-    void writeRecord(Address &address, const Data &data){
+    void writeRecord(const Address &address, const Data &data){
         auto [page, offset] = address; 
         if(pageCache.find(page) != pageCache.end()){
             Item& item = promoteAngGetItem(page);

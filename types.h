@@ -1,5 +1,5 @@
 #pragma once
-#define D   2
+#define D   1
 #define BLOCKING_FACTOR   256
 #define NULL_PAGE   -1
 #define NULL_KEY    -1
