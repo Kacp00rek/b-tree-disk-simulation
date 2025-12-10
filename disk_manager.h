@@ -1,6 +1,6 @@
 #pragma once
 #include <fstream>
-#include <unordered_set>
+#include <set>
 #include <iostream>
 #include <optional>
 #include "types.h"
@@ -10,8 +10,8 @@ using namespace std;
 class DiskManager{
     fstream file;
     size_t pageSize;
-    unordered_set<Page> emptyPages;
-    unordered_set<Address> emptyPositions;
+    set<Page> emptyPages;
+    set<Address> emptyPositions;
     Page pages;
 
 public:
@@ -107,6 +107,13 @@ public:
         file.close();
     }
 
+    bool isEmpty(Address address){
+        return emptyPositions.find(address) != emptyPositions.end();
+    }
+
+    Page getSize(){
+        return pages;
+    }
 };
 int DiskManager::READS = 0;
 int DiskManager::WRITES = 0;

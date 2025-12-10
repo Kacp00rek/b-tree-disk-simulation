@@ -148,8 +148,8 @@ void tests(){
     uniform_real_distribution<double> opt(0, 1);
 
     vector<double> odds = {0.3, 0.2, 0.2, 0.3};
-    int tests = 250000;
-    int startingPoint = 10000;
+    int tests = 1000000;
+    int startingPoint = 10;
 
     for(int i = 1; i < (int)odds.size(); i++){
         odds[i] += odds[i - 1];
@@ -180,16 +180,121 @@ void tests(){
         if(ok){
             testsPassed++;
         }
+        //btree.visualize();
+        //getchar();
     }
 
     cout << "\n";
     cout << testsPassed << " / " << tests;
 }
 
+void interacive(){
+    BTree<RecordType> btree;
+    btree.visualize();
+    Key maxKey = 0;
+
+    while(true){
+        cout << "Choose an action:\n";
+        cout << "1. INSERT\n";
+        cout << "2. INSERT RANDOM RECORDS\n";
+        cout << "3. REMOVE\n";
+        cout << "4. MODIFY\n";
+        cout << "5. SEARCH\n";
+        cout << "6. PRINT ALL RECORDS\n";
+        cout << "7. END\n";
+        int option;
+        cin >> option;
+
+        int reads = DiskManager::READS;
+        int writes = DiskManager::WRITES;
+        
+        if(option == 1){
+            cout << "\nINSERTING...\n";
+            RecordType record;
+            cin >> record;
+            STATUS status = btree.insert(record);
+            if(status == OK){
+                cout << record << " INSERTED SUCCESSFULLY\n";
+                maxKey = max(maxKey, record.key + 1);
+            }
+            else{
+                cout << "KEY " << record.key << " " << status << "\n";
+            }
+        }
+        else if(option == 2){
+            cout << "INSERTING RANDOM RECORDS...\n";
+            cout << "N: ";
+            int n;
+            cin >> n;
+            vector<Key> keys;
+            for(int i = 0; i < n; i++){
+                keys.push_back(maxKey++);
+            }
+            random_device rd;
+            default_random_engine rng(rd());
+            shuffle(keys.begin(), keys.end(), rng);
+            for(int i = 0; i < n; i++){
+                RecordType record = RecordType::random(keys[i]);
+                btree.insert(record);
+            }
+        }
+        else if(option == 3){
+            cout << "\nREMOVING...\n";
+            Key key;
+            cout << "KEY: ";
+            cin >> key;
+            STATUS status = btree.remove(key);
+            if(status == OK){
+                cout << key << " REMOVED SUCCESSFULLY\n";
+            }
+            else{
+                cout << "KEY " << key << " " << status << "\n";
+            }
+        }
+        else if(option == 4){
+            cout << "\nMODYFING...\n";
+            RecordType record;
+            cin >> record;
+            STATUS status = btree.modify(record);
+            if(status == OK){
+                cout << record << " MODIFIED SUCCESSFULLY\n";
+            }
+            else{
+                cout << "KEY " << record.key << " " << status << "\n";
+            }
+        }
+        else if(option == 5){
+            cout << "\nSEARCHING...\n";
+            Key key;
+            cout << "KEY: ";
+            cin >> key;
+            auto result = btree.search(key);
+            if(result == nullopt){
+                cout << "KEY: " << key << " " << DOESNT_EXIST << "\n";
+            }
+            else{
+                cout << *result << "\n";
+            }
+        }
+        else if(option == 6){
+            cout << "\nPRINTING...\n";
+            btree.printAll();
+        }
+        else{
+            break;
+        }
+        cout << "READS: " << DiskManager::READS - reads << "\n";
+        cout << "WRITES: " << DiskManager::WRITES - writes << "\n";
+        cout << "\n";
+        btree.visualize();
+    }
+
+}
+
 void visualisation(){
     BTree<RecordType> btree;
     vector<Key> keys;
-    int n = 1000;
+    int n = 20;
     for(int i = 0; i < n; i++){
         keys.push_back(i);
     }
@@ -206,8 +311,13 @@ void visualisation(){
     for(int i = 0; i < n; i++){
         cout << "REMOVING: " << keys[i] << "\n\n";
         getchar();
+        int currentREADS = DiskManager::READS;
+        int currentWRITES = DiskManager::WRITES;
         btree.remove(keys[i]);
         btree.visualize();
+
+        cout << "READS: " << DiskManager::READS - currentREADS << "\n";
+        cout << "WRITES: " << DiskManager::WRITES - currentWRITES << "\n";
     }
 
 
@@ -217,14 +327,7 @@ int main(){
 
     srand(time(NULL));
 
-    bool visualisationMode = false;
-
-    if(visualisationMode){
-        visualisation();
-    }
-    else{
-        tests();
-    }
+    tests();
 
 
     return 0;

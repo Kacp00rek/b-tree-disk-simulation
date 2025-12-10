@@ -2,6 +2,7 @@
 #include "types.h"
 #include <string>
 #include <random>
+#include <fstream>
 
 using namespace std;
 
@@ -16,6 +17,14 @@ struct Record{
         key = k;
         angle = a;
         radius = r;
+    }
+
+    void getDot(ofstream &file){
+        file << "<TD>" << key << "</TD>" << "<TD>" << angle << "</TD>" << "<TD>" << radius << "</TD>";
+    }
+
+    static void getHeader(ofstream &file){
+        file << "<TD>KEY</TD> <TD>ANGLE</TD> <TD>RADIUS</TD>";
     }
 
     Data serialize(){
@@ -59,6 +68,16 @@ struct Record{
         record.radius = rad(gen);
         
         return move(record);
+    }
+
+    friend istream& operator>>(istream& in, Record& r){
+        cout << "KEY: ";
+        in >> r.key;
+        cout << "ANGLE: ";
+        in >> r.angle;
+        cout << "RADIUS: ";
+        in >> r.radius;
+        return in;
     }
 
     friend ostream& operator<<(ostream &os, const Record &r){

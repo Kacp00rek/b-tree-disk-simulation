@@ -22,6 +22,7 @@ class BufferManager{
     LRUlist queue;
     CacheMap pageCache;
     int capacity;
+    size_t recordSize;
 
     void removeLastElement(){
         Page p = queue.back();
@@ -41,6 +42,7 @@ class BufferManager{
     }
 
 public:
+    
     BufferManager(){
 
     }
@@ -48,6 +50,12 @@ public:
     BufferManager(DiskManager *diskManager, int capacity){
         this->diskManager = diskManager;
         this->capacity = capacity;
+    }
+
+    BufferManager(DiskManager *diskManager, int capacity, size_t recordSize){
+        this->diskManager = diskManager;
+        this->capacity = capacity;
+        this->recordSize = recordSize;
     }
 
     void writePage(Page page, const Data &data){
@@ -150,7 +158,7 @@ public:
         }
     }
 
-    Data readRecord(const Address &address, size_t recordSize){
+    Data readRecord(const Address &address){
         Data temp = readPage(address.page);
         Data data(recordSize);
         memcpy(data.data(), temp.data() + address.offset, data.size());
@@ -159,6 +167,21 @@ public:
 
     void removeRecord(const Address &address){
         diskManager->addFreeSlot(address);
+    }
+
+    Data peekPage(Page page){
+        if(pageCache.find(page) != pageCache.end()){
+            return pageCache[page].data;
+        }
+        DiskManager::READS--;
+        return diskManager->readPage(page);
+    }
+
+    Data peekRecord(Address address){
+        Data temp = peekPage(address.page);
+        Data data(recordSize);
+        memcpy(data.data(), temp.data() + address.offset, data.size());
+        return data;
     }
 
 };

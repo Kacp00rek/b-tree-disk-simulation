@@ -12,6 +12,12 @@ struct Address{
     bool operator==(const Address& other) const{
         return page == other.page && offset == other.offset;
     }
+    bool operator<(const Address& other) const{
+        if(page != other.page){
+            return page < other.page;
+        }
+        return offset < other.offset;
+    }
 };
 
 namespace std{
