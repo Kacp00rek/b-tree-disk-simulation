@@ -1,6 +1,6 @@
 #pragma once
 #define D   2
-#define BLOCKING_FACTOR   5
+#define BLOCKING_FACTOR   256
 #define NULL_PAGE   -1
 #define NULL_KEY    -1
 #include <vector>
@@ -14,9 +14,15 @@ using Key = long long;
 enum STATUS { OK, ALREADY_EXISTS, DOESNT_EXIST };
 ostream& operator<<(ostream& os, STATUS c) {
     switch(c){
-        case OK:   os << "OK";   break;
-        case ALREADY_EXISTS: os << "ALREADY_EXISTS"; break;
-        case DOESNT_EXIST:  os << "DOESNT_EXIST";  break;
+        case OK:
+            os << "OK";
+            break;
+        case ALREADY_EXISTS:
+            os << "ALREADY_EXISTS";
+            break;
+        case DOESNT_EXIST:
+            os << "DOESNT_EXIST";
+            break;
     }
     return os;
 }

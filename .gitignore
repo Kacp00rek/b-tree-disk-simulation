@@ -7,3 +7,4 @@ seq.cpp
 test3.cpp
 *.dot
 *.png
+*.xlsx

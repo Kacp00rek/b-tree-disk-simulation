@@ -310,10 +310,24 @@ class BTree{
                 printAll(node.children[i]);
             }
             if(i < (int)node.entries.size()){
-                cout << T::deserialize(bufferRecords.readRecord(node.entries[i].address)) << "\n";
+                T::deserialize(bufferRecords.readRecord(node.entries[i].address)).print();
+                cout << "\n";
             }
         }
 
+    }
+
+    pair<int, int> getRatio(Page page){
+        Node node = Node::deserialize(bufferNodes.peekPage(page));
+        pair<int, int> answer = {(int)node.entries.size(), 1};
+        if(!node.leaf){
+            for(int i = 0; i < (int)node.children.size(); i++){
+                pair<int, int> ans = getRatio(node.children[i]);
+                answer.first += ans.first;
+                answer.second += ans.second;
+            }
+        }
+        return answer;
     }
 
 public:
@@ -325,8 +339,8 @@ public:
         diskNodes(filenameNodes, Node::size),
         diskMain(filenameMain, T::size * BLOCKING_FACTOR),
         
-        bufferNodes(&diskNodes, 5),
-        bufferRecords(&diskMain, 5, T::size)
+        bufferNodes(&diskNodes, 1000),
+        bufferRecords(&diskMain, 16, T::size)
     {
         root = NULL_PAGE;
     }
@@ -489,5 +503,13 @@ public:
         system(command.c_str());
         command = "dot -Tpng " + filename2 + " -o " + png2;
         system(command.c_str());
+    }
+
+    double getRatio(){
+        if(root == NULL_PAGE){
+            return 0;
+        }
+        auto [keys, nodes] = getRatio(root);
+        return (double)keys / (nodes * 2 * D);
     }
 };

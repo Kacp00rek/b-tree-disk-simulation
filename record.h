@@ -71,18 +71,28 @@ struct Record{
     }
 
     friend istream& operator>>(istream& in, Record& r){
-        cout << "KEY: ";
-        in >> r.key;
-        cout << "ANGLE: ";
-        in >> r.angle;
-        cout << "RADIUS: ";
-        in >> r.radius;
+        in >> r.key >> r.angle >> r.radius;
         return in;
     }
 
     friend ostream& operator<<(ostream &os, const Record &r){
-        os << "[ " << r.key << ", " << r.angle << ", " << r.radius << " ]";
+        os << r.key << " " << r.angle << " " << r.radius;
         return os;
+    }
+
+    void print(){
+        cout << "[KEY: " << key << ", ANGLE: " << angle << ", RADIUS: " << radius << "]";
+    }
+
+    static Record input(){
+        Record r;
+        cout << "KEY: ";
+        cin >> r.key;
+        cout << "ANGLE: ";
+        cin >> r.angle;
+        cout << "RADIUS: ";
+        cin >> r.radius;
+        return move(r);
     }
 
     bool operator==(const Record &other) const {
