@@ -20,7 +20,7 @@ public:
     DiskManager(){
         
     }
-    DiskManager(string &filename, size_t pageSize){
+    DiskManager(const string &filename, size_t pageSize){
         file.open(filename, ios::out | ios::trunc);
         file.close();
         file.open(filename, ios::in | ios::out | ios::binary);

@@ -1,10 +1,10 @@
 #include <iostream>
 #include <random>
 #include <windows.h>
-#include "btree.h"
-#include "record.h"
 #include <conio.h>
 #include <algorithm>
+#include "btree.h"
+#include "record.h"
 
 using namespace std;
 using RecordType = Record;
@@ -123,13 +123,24 @@ void generateTest(const string &filename){
 }
 
 void executeTest(const string &filename){
+    cout << "VISUALIZE THE TREE (y/n): ";
+    bool visualisation = (selectOption({'y', 'n'}) == 'y');
+    system("cls");
+    bool pause = false;
+    if(visualisation){
+        cout << "PAUSE BEFORE EVERY OPERATION (y/n): ";
+        pause = (selectOption({'y', 'n'}) == 'y');
+    }
+    system("cls");
     fstream file(filename);
     string action;
     BTree<RecordType> btree;
     unordered_map<Key, RecordType> hashmap;
     int passed = 0;
     int counter = 0;
-    double ratio = 0;
+    if(visualisation){
+        btree.visualize();
+    }
     while(file >> action){
         counter++;
         bool verdict;
@@ -138,14 +149,18 @@ void executeTest(const string &filename){
         if(action == "INSERT"){
             RecordType record;
             file >> record;
+            cout << action << ":  ";
+            record.print();
+            if(pause){
+                cout << "\nCLICK ANY KEY TO RESUME\n";
+                _getch();
+            }
             STATUS status = btree.insert(record);
             STATUS expected = hashmap.find(record.key) == hashmap.end() ? OK : ALREADY_EXISTS;
             if(expected == OK){
                 hashmap[record.key] = record;
             }
             verdict = (status == expected);
-            cout << action << ":  ";
-            record.print();
             cout << "\n";
             cout << "EXPECTED: " << expected << "\n";
             cout << "GOT:      " << status << "\n";
@@ -153,26 +168,35 @@ void executeTest(const string &filename){
         else if(action == "REMOVE"){
             Key key;
             file >> key;
+            cout << action << ":   " << key;
+            if(pause){
+                cout << "\nCLICK ANY KEY TO RESUME\n";
+                _getch();
+            }
             STATUS status = btree.remove(key);
             STATUS expected = hashmap.find(key) != hashmap.end() ? OK : DOESNT_EXIST;
             if(expected == OK){
                 hashmap.erase(key);
             }
             verdict = (status == expected);
-            cout << action << ":   " << key << "\n";
+            cout << "\n";
             cout << "EXPECTED: " << expected << "\n";
             cout << "GOT:      " << status << "\n";
         }
         else if(action == "MODIFY"){
             RecordType record;
             file >> record;
+            cout << action << ":   ";
+            record.print();
+            if(pause){
+                cout << "\nCLICK ANY KEY TO RESUME\n";
+                _getch();
+            }
             STATUS status = btree.modify(record);
             STATUS expected = hashmap.find(record.key) != hashmap.end() ? OK : DOESNT_EXIST;
             if(expected == OK){
                 hashmap[record.key] = record;
             }
-            cout << action << ":   ";
-            record.print();
             cout << "\n";
             cout << "EXPECTED: " << expected << "\n";
             cout << "GOT:      " << status << "\n";
@@ -180,11 +204,15 @@ void executeTest(const string &filename){
         else{
             Key key;
             file >> key;
-            cout << action << ":   " << key << "\n";
+            cout << action << ":   " << key;
+            if(pause){
+                cout << "\nCLICK ANY KEY TO RESUME\n";
+                _getch();
+            }
             auto result = btree.search(key);
             bool exists1 = (hashmap.find(key) != hashmap.end());
             bool exists2 = (result != nullopt);
-            cout << "EXPECTED: ";
+            cout << "\nEXPECTED: ";
             if(exists1){
                 hashmap[key].print();
             }
@@ -198,7 +226,6 @@ void executeTest(const string &filename){
             else{
                 cout << DOESNT_EXIST;
             }
-            cout << "\n";
             
             if(exists1){
                 verdict = (exists2 && *result == hashmap[key]);
@@ -206,24 +233,24 @@ void executeTest(const string &filename){
             else{
                 verdict = !exists2;
             }
+            cout << "\n";
         }
-        double currRatio = btree.getRatio();
-        ratio += currRatio;
         cout << "VERDICT : " << (verdict ? "PASSED" : "FAILED") << "\n";
         cout << "READS:    " << DiskManager::READS - reads << "\n";
-        cout << "WRITE:    " << DiskManager::WRITES - writes << "\n";
-        cout << "RATIO:    " << currRatio << "\n\n";
+        cout << "WRITE:    " << DiskManager::WRITES - writes << "\n\n";
         if(verdict){
             passed++;
         }
+        if(visualisation){
+            btree.visualize();
+        }
     }
-
     cout << "PASSED:        " << passed << "/" << counter << "\n";
     cout << "READS:         " << DiskManager::READS << "\n";
     cout << "WRITES:        " << DiskManager::WRITES << "\n";
-    cout << "AVERAGE RATIO: " << ratio / counter << "\n";
 
-
+    // cout << "HEIGHT: " << btree.getHeight() << "\n";
+    // cout << "AVERAGE RATIO: " << ratio / counter << "\n";
 
     file.close();
 }
@@ -240,7 +267,7 @@ void test(){
         generateTest(filename);
     }
     else{
-        cout << "\nNAME OF THE FILE: ";
+        cout << "NAME OF THE FILE: ";
         cin >> filename;
     }
     system("cls");
@@ -280,7 +307,7 @@ void interacive(){
             }
         }
         else if(option == '2'){
-            cout << "INSERTING RANDOM RECORDS...\n";
+            cout << "\nINSERTING RANDOM RECORDS...\n";
             cout << "N: ";
             int n;
             cin >> n;
@@ -368,8 +395,6 @@ void interacive(){
 }
 
 int main(){
-    srand(time(NULL));
-
     cout << "SELECT MODE:\n";
     cout << "1. INTERACTIVE\n";
     cout << "2. TESTING\n";
@@ -377,7 +402,6 @@ int main(){
     system("cls");
 
     option == '1' ? interacive() : test();
-
 
     return 0;
 }

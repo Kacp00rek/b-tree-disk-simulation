@@ -12,8 +12,6 @@ template <typename T>
 class BTree{
     
     Page root;
-    string filenameNodes;
-    string filenameMain;
     DiskManager diskNodes;
     DiskManager diskMain;
     BufferManager bufferNodes;
@@ -178,7 +176,6 @@ class BTree{
     }
 
     Node merge(Node &node, Page page){
-        // cout << "MERGE\n";
         Node parent = Node::deserialize(bufferNodes.readPage(node.parent));
         int index = parent.searchChild(page);
         int parentEntry;
@@ -268,17 +265,17 @@ class BTree{
         file << "node [shape = none,height=.1];\n"; 
         Page pages = diskMain.getSize();
         if(pages > 0){
-            file << "DB_VIEW [label=<<TABLE BORDER=\"1\" CELLBORDER=\"1\" CELLSPACING=\"0\">\n";
+            file << "   DB_VIEW [label=<<TABLE BORDER=\"1\" CELLBORDER=\"1\" CELLSPACING=\"0\">\n";
             
             size_t recordSize = T::size;
 
             for(int i = 0; i < pages; i++){
-                file << "<TR><TD COLSPAN=\"4\">PAGE: " << i << "</TD></TR>\n";
-                file << "<TR><TD>OFFSET</TD>";
+                file << "       <TR><TD COLSPAN=\"4\">PAGE: " << i << "</TD></TR>\n";
+                file << "           <TR><TD>OFFSET</TD>";
                 T::getHeader(file);
-                file << "</TR>";
+                file << "</TR>\n";
                 for(int j = 0; j < diskMain.getPageSize(); j += recordSize){
-                    file << "<TR><TD>" << j << "</TD>";
+                    file << "           <TR><TD>" << j << "</TD>";
                     if(!diskMain.isEmpty({i, j})){
                         T record = T::deserialize(bufferRecords.peekRecord({i, j}));
                         record.getDot(file);
@@ -286,10 +283,10 @@ class BTree{
                     else{
                         file << "<TD>-</TD><TD>-</TD><TD>-</TD>";
                     }
-                    file << "</TR>";
+                    file << "</TR>\n";
                 }
             }
-            file << "</TABLE>>];\n";
+            file << "   </TABLE>>];\n";
         }
         file << "}";
     }
@@ -330,17 +327,21 @@ class BTree{
         return answer;
     }
 
+    void getHeight(Page page, int &height){
+        height++;
+        Node node = Node::deserialize(bufferNodes.peekPage(page));
+        if(!node.leaf){
+            getHeight(node.children[0], height);
+        } 
+    }
+
 public:
-    public:
     BTree() : 
-        filenameNodes("nodes.txt"), 
-        filenameMain("records.txt"),
+        diskNodes("nodes.txt", Node::size),
+        diskMain("records.txt", T::size * BLOCKING_FACTOR),
         
-        diskNodes(filenameNodes, Node::size),
-        diskMain(filenameMain, T::size * BLOCKING_FACTOR),
-        
-        bufferNodes(&diskNodes, 1000),
-        bufferRecords(&diskMain, 16, T::size)
+        bufferNodes(&diskNodes, NODES_CACHE_SIZE),
+        bufferRecords(&diskMain, RECORDS_CACHE_SIZE, T::size)
     {
         root = NULL_PAGE;
     }
@@ -511,5 +512,14 @@ public:
         }
         auto [keys, nodes] = getRatio(root);
         return (double)keys / (nodes * 2 * D);
+    }
+
+    int getHeight(){
+        if(root == NULL_PAGE){
+            return 0;
+        }
+        int height = 0;
+        getHeight(root, height);
+        return height;
     }
 };
