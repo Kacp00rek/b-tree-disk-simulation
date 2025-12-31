@@ -2,6 +2,8 @@
 
 A C++ implementation of a B-Tree data structure designed for disk-based storage simulation. This project includes performance tracking (Disk I/O), automated testing, and a web-based visualization.
 
+<img width="861" height="196" alt="Zrzut ekranu 2025-12-31 175241" src="https://github.com/user-attachments/assets/83004ee1-774d-440b-b062-6bb8ab0832d7" />
+
 ## Project Structure
 
 - **`src/`**: C++ source files
