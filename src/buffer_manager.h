@@ -143,7 +143,8 @@ public:
         if(address != nullopt){
             writeRecord(*address, data);
             return *address;
-        }else{
+        }
+        else{
             size_t pageSize = diskManager->getPageSize();
             Data tombstone(pageSize, 0);
             memcpy(tombstone.data(), data.data(), data.size());

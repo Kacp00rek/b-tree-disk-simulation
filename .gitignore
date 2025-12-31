@@ -1,10 +1,5 @@
 .vscode
 *.exe
-test.cpp
-test2.cpp
 *.txt
-seq.cpp
-test3.cpp
 *.dot
 *.png
-*.xlsx

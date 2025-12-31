@@ -2,8 +2,8 @@
 
 #define D                   2
 #define NODES_CACHE_SIZE    5
-#define BLOCKING_FACTOR     10
-#define RECORDS_CACHE_SIZE  16
+#define BLOCKING_FACTOR     5
+#define RECORDS_CACHE_SIZE  5
 #define NULL_PAGE           -1
 #define NULL_KEY            -1
 

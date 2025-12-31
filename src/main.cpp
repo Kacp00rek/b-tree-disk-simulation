@@ -263,7 +263,7 @@ void test(){
     system("cls");
     string filename;
     if(option == '1'){
-        filename = "test.txt";
+        filename = "../data/test.txt";
         generateTest(filename);
     }
     else{

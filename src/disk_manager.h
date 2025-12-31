@@ -17,15 +17,17 @@ class DiskManager{
 public:
     static int READS;
     static int WRITES;
+    
     DiskManager(){
         
     }
+
     DiskManager(const string &filename, size_t pageSize){
         file.open(filename, ios::out | ios::trunc);
         file.close();
         file.open(filename, ios::in | ios::out | ios::binary);
         if(!file.is_open()){
-            cerr << "Filed to open file " << filename << "\n";
+            throw std::runtime_error("Filed to open file " + filename);
             return;
         }
         this->pageSize = pageSize;
@@ -103,16 +105,16 @@ public:
         return pageSize;
     }
 
-    ~DiskManager(){
-        file.close();
-    }
-
     bool isEmpty(Address address){
         return emptyPositions.find(address) != emptyPositions.end();
     }
 
     Page getSize(){
         return pages;
+    }
+
+    ~DiskManager(){
+        file.close();
     }
 };
 int DiskManager::READS = 0;

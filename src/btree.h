@@ -85,7 +85,7 @@ class BTree{
         bufferNodes.writePage(siblingPage, sibling.serialize());
         bufferNodes.writePage(node.parent, parent.serialize());
         bufferNodes.writePage(page, node.serialize());
-        }
+    }
 
     bool compensation(Node &node, Page page, bool insert){
         if(node.parent == NULL_PAGE){
@@ -335,10 +335,15 @@ class BTree{
         } 
     }
 
+    NodeEntry saveRecord(T &record){
+        Address address = bufferRecords.writeRecord(record.serialize());
+        return {record.key, address};
+    }
+
 public:
     BTree() : 
-        diskNodes("nodes.txt", Node::size),
-        diskMain("records.txt", T::size * BLOCKING_FACTOR),
+        diskNodes("../data/nodes.txt", Node::size),
+        diskMain("../data/records.txt", T::size * BLOCKING_FACTOR),
         
         bufferNodes(&diskNodes, NODES_CACHE_SIZE),
         bufferRecords(&diskMain, RECORDS_CACHE_SIZE, T::size)
@@ -369,11 +374,6 @@ public:
         bufferRecords.writeRecord(*result, record.serialize());
 
         return OK;
-    }
-
-    NodeEntry saveRecord(T &record){
-        Address address = bufferRecords.writeRecord(record.serialize());
-        return {record.key, address};
     }
 
     STATUS insert(T &record){
@@ -483,22 +483,13 @@ public:
     }
 
     void visualize(){
-        string filename1 = "btree.dot";
-        string filename2 = "table.dot";
+        string filename1 = "../graphs/btree.dot";
+        string filename2 = "../graphs/table.dot";
         generateTree(filename1);
         generateTable(filename2);
 
-        string png1 = filename1;
-        string png2 = filename2;
-        size_t dotPos1 = png1.rfind(".dot");
-        size_t dotPos2 = png2.rfind(".dot");
-
-        if(dotPos1 != string::npos){
-            png1.replace(dotPos1, 4, ".png");
-        }
-        if(dotPos2 != string::npos){
-            png2.replace(dotPos2, 4, ".png");
-        }
+        string png1 = "../images/btree.png";
+        string png2 = "../images/table.png";
 
         string command = "dot -Tpng " + filename1 + " -o " + png1;
         system(command.c_str());
